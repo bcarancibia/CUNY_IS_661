@@ -125,5 +125,94 @@ summary_donor_moldova <- summarise(by_donor_moldova, count_each_donor = n(),
 
 
 
+#civ plot
+civ <- ggplot(summary_donor_civ, aes(summary_donor_civ$Donor.Agency, summary_donor_civ$total_by_donor)) +
+  geom_histogram(stat="identity",fill="#c0392b", alpha=0.75)+
+  fte_theme()+
+  xlab("Donor") +
+  ylab("Total By Donor")+
+  labs(title <- "Actual Commitments in AMP Per Donor" )+
+  theme(axis.ticks = element_blank())+
+  coord_flip()
+
+civ
+
+#chad
+
+chad <- ggplot(summary_donor_chad, aes(summary_donor_chad$Donor.Agency, summary_donor_chad$total_by_donor)) +
+  geom_histogram(stat="identity",fill="#c0392b", alpha=0.75)+
+  fte_theme()+
+  xlab("Donor") +
+  ylab("Total By Donor")+
+  labs(title <- "Actual Commitments in AMP Per Donor" )+
+  theme(axis.ticks = element_blank())+
+  coord_flip()
+
+chad
+
+#kosovo
+
+kosovo <- ggplot(summary_donor_kosovo, aes(summary_donor_kosovo$Donor.Agency, summary_donor_kosovo$total_by_donor)) +
+  geom_histogram(stat="identity",fill="#c0392b", alpha=0.75)+
+  fte_theme()+
+  xlab("Donor") +
+  ylab("Total By Donor")+
+  labs(title <- "Actual Commitments in AMP Per Donor" )+
+  theme(axis.ticks = element_blank())+
+  coord_flip()
+
+kosovo
+
+#madagascar
+
+madagascar <- ggplot(summary_donor_madagascar, aes(summary_donor_madagascar$AGENCE, summary_donor_madagascar$total_by_donor)) +
+  geom_histogram(stat="identity",fill="#c0392b", alpha=0.75)+
+  fte_theme()+
+  xlab("Donor") +
+  ylab("Total By Donor")+
+  labs(title <- "Actual Commitments in AMP Per Donor" )+
+  theme(axis.ticks = element_blank())+
+  coord_flip()
+
+madagascar
+
+#malawi
+malawi <- ggplot(summary_donor_malawi, aes(summary_donor_malawi$Donor.Agency, summary_donor_malawi$total_by_donor)) +
+  geom_histogram(stat="identity",fill="#c0392b", alpha=0.75)+
+  fte_theme()+
+  xlab("Donor") +
+  ylab("Total By Donor")+
+  labs(title <- "Actual Commitments in AMP Per Donor" )+
+  theme(axis.ticks = element_blank())+
+  coord_flip()
+
+malawi
+
+#moldova
+moldova<- ggplot(summary_donor_moldova, aes(summary_donor_moldova$Donor, summary_donor_moldova$total_by_donor)) +
+  geom_histogram(stat="identity",fill="#c0392b", alpha=0.75)+
+  fte_theme()+
+  xlab("Donor") +
+  ylab("Total By Donor")+
+  labs(title <- "Actual Commitments in AMP Per Donor" )+
+  theme(axis.ticks = element_blank())+
+  coord_flip()
+
+moldova
+
+#timor
+timor <- ggplot(summary_donor_timor, aes(summary_donor_timor$Donor.Agency, summary_donor_timor$total_by_donor)) +
+  geom_histogram(stat="identity",fill="#c0392b", alpha=0.75)+
+  fte_theme()+
+  xlab("Donor") +
+  ylab("Total By Donor")+
+  labs(title <- "Actual Commitments in AMP Per Donor" )+
+  theme(axis.ticks = element_blank())+
+  coord_flip()
+
+timor
+
+
+
 
 
