@@ -45,16 +45,17 @@ fte_theme <- function() {
 }
 
 
-chad <- read.csv("chad_amp.csv")
-civ <- read.csv("civ_amp.csv")
-haiti <- read.csv("haiti_amp.csv")
-kosovo <- read.csv("kosovo_amp.csv")
-madagascar <- read.csv("mada_amp.csv")
-malawi <- read.csv("malawi.csv") 
-moldova <- read.csv("moldova.csv")
-timor <- read.csv("timor.csv")
-uganda <- read.csv("uganda_amp.csv")
-honduras <- read.csv("honduras.csv")
+chad <- read.csv("/users/bcarancibia/CUNY_IS_661/data/chad_amp.csv")
+civ <- read.csv("/users/bcarancibia/CUNY_IS_661/data/civ_amp.csv")
+haiti <- read.csv("/users/bcarancibia/CUNY_IS_661/data/haiti_amp.csv")
+honduras <- read.csv("/users/bcarancibia/CUNY_IS_661/data/honduras.csv")
+kosovo <- read.csv("/users/bcarancibia/CUNY_IS_661/data/kosovo_amp.csv")
+madagascar <- read.csv("/users/bcarancibia/CUNY_IS_661/data/mada_amp.csv")
+malawi <- read.csv("/users/bcarancibia/CUNY_IS_661/data/malawi.csv")
+moldova <- read.csv("/users/bcarancibia/CUNY_IS_661/data/moldova.csv")
+nepal <- read.csv("/users/bcarancibia/CUNY_IS_661/data/nepal.csv")
+timor <- read.csv("/users/bcarancibia/CUNY_IS_661/data/timor.csv")
+uganda <- read.csv("/users/bcarancibia/CUNY_IS_661/data/uganda_amp.csv")
 
 length (chad)
 length(civ)
@@ -211,7 +212,6 @@ timor <- ggplot(summary_donor_timor, aes(summary_donor_timor$Donor.Agency, summa
   coord_flip()
 
 timor
-
 
 
 

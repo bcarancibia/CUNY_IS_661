@@ -1,0 +1,34 @@
+---
+title: "Forecasting Foreign Aid Amounts"
+author: "Ben Arancibia"
+date: "May 22, 2015"
+output:
+  html_document:
+    theme: readable
+    toc: yes
+---
+
+This is a walk through report explaining the process of using forecast methodologies and apply those methodologies to financial foreign aid. This walk through is broken up into different sections:
+
+* Introduction
+
+* The Data Workflow
+    + Exploratory Data Analysis
+    + Time Series Operations
+
+* Forecast
+    + Methodologies
+    + Implementation
+
+* Data Mining 
+    + Clustering
+
+* Conclusions
+
+#Introduction
+
+Developing countries face challenges in accessing up-to-date information about aid, development, and humanitarian flows. This information is needed to plan and manage resources effectively. There is a large movement which allows different stakeholders to publish data on development cooperation activities. The International Aid Transparency Initiative [IATI](http://www.aidtransparency.net/) manages and provides the standard that donors and recipient countries, civil society organizations, and others use to publish and consume data on development cooperation activities.
+
+
+
+

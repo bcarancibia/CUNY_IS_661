@@ -1,0 +1,7 @@
+---
+title: "Forecasting Foreign Aid Amounts"
+author: "Ben Arancibia"
+date: "April 26, 2015"
+output: pdf_document
+---
+
