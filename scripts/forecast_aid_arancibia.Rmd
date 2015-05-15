@@ -13,8 +13,8 @@ This is a walk through report explaining the process of using forecast methodolo
 * Introduction
 
 * The Data Workflow
+    + Data Import
     + Exploratory Data Analysis
-    + Time Series Operations
 
 * Forecast
     + Methodologies
@@ -29,6 +29,179 @@ This is a walk through report explaining the process of using forecast methodolo
 
 Developing countries face challenges in accessing up-to-date information about aid, development, and humanitarian flows. This information is needed to plan and manage resources effectively. There is a large movement which allows different stakeholders to publish data on development cooperation activities. The International Aid Transparency Initiative [IATI](http://www.aidtransparency.net/) manages and provides the standard that donors and recipient countries, civil society organizations, and others use to publish and consume data on development cooperation activities.
 
+Assumptions:
+
+* All values are in USD
+
+#Data Workflow
+
+The first step of any analysis is to import the necessary packages. Packages used in this analysis are below.
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(ggplot2) #static visualization
+library(dplyr) #data manipulation and connect to database
+library(knitr)
+library("devtools") #needed to install plotly if you don't have it already
+
+library(plotly) #interactive visualization
+library(forecast)
+library(lubridate)
+library(cluster)
+library(fpc)
+```
+
+```
+#needed for plotly API, replace it with yours, it's free if you sign up for an account
+py <- plotly(username="XXXX", key="XXXX")
+set_credentials_file("XXXXX", "XXXXX") 
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+#needed for plotly API, replace it with yours, it's free if you sign up for an account
+py <- plotly(username="bcarancibia", key="1960rm8f1b")
+set_credentials_file("bcarancibia", "1960rm8f1b") 
+```
+##Importing the CSV
+
+The data was downloaded via the [IATI API](datastore.iatistandard.org/api/1/access/transaction.csv?recipient-country=BF%7CBI%7CTD%7CCD%7CCI%7CET%7CGM%7CGW%7CHT%7CHN%7CKG%7CLA%7CMG%7CMD%7CNP%7CSS%7CTL%7CUG&stream=True). The resulting csv was imported into memory to quickly view.
+
+```{r}
+transactions <- read.csv("/users/bcarancibia/transactions_data.csv", header=TRUE)
+nrow(transactions)
+```
+
+The number of rows is quite large so the first step is to cut it down to only include transactions that are disbursments and commitments. In the transaction.type, fields with C, D, 2, or 3 are commitments and disbursements. First step is to subset the data to see how many rows of data are in the file.
+
+```{r}
+data <- subset(transactions, transaction.type =="C" | transaction.type =="D" | transaction.type ==2 | transaction.type == 3)
+nrow(data)
+
+nrow(transactions) - nrow(data)
+```
+
+The number of rows subsetted into the the "data" dataframe is 42,002 less with a total of 132,510 rows in the data dataframe. The next step is to filter out only the necessary fields. Currently, there are 74, the key fields necessary are:
+
+* transaction date
+* default currency
+* transaction value
+* IATI identifier
+* Reporting Org
+* Title
+* Start Planned
+* End Planned
+* Start Actual
+* End Actual
+* Recipient Country
+* Sector
+
+```{r}
+data <- data[c("transaction.date","transaction.value", "iati.identifier", "reporting.org", "title", "start.planned", "end.planned", "start.actual", "end.actual", "recipient.country", "sector")]
+```
+
+```{r, echo=FALSE}
+data <- read.csv("/users/bcarancibia/transactions.countries.csv", header=TRUE, stringsAsFactors=FALSE)
+data <- data[-1] #remove extra field
+data <- data[-2]
+```
+
+The final step in the data clean up is to take a look at transactions values.
+
+```{r}
+summary(data$transaction.value)
+```
+
+There are negative transaction values, which means some of the transactions are being used to pay off loans. There are also 88 NA's as a result, there is a final subset to remove the 88 NA's.  
+
+```{r}
+data <- subset(data, transaction.value!="NA")
+```
+
+Also, there needs to be a removal of blank transactions dates.
+
+```{r}
+data <- subset(data, transaction.date!="")
+```
+
+Doing this final subset allows 93, 531 rows of data and take a look at the aid amounts per country.
+
+```{r, plotly=TRUE, warning=FALSE}
+
+plt <- ggplot(data, aes(recipient.country, transaction.value)) + 
+                geom_bar(stat = 'identity') +
+                theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+py <- plotly()
+py$ggplotly(plt, session='knitr')
+
+```
 
 
 
+#Forecasting
+
+One of the first things that need to do is plot transaction values based on dates.
+
+```{r}
+by.date<- group_by(data, transaction.date)
+summary.date <- summarise(by.date, count.date = n(), 
+                               total.date = sum(transaction.value))
+
+
+order.date.total <- summary.date[order(-summary.date$total.date),]
+
+order.date <- summary.date[order(-summary.date$count.date),]
+```
+
+One thing to notice is that the in the largest number of transactions occur at the end of the year.
+
+```{r}
+knitr::kable(head(order.date))
+```
+
+The other thing to notice is that the largest number of transaction values is at the end of the year.
+```{r}
+knitr::kable(head(order.date.total))
+```
+
+Lets take a look at the data structure, first order the data.
+```{r, plotly=TRUE, warning=FALSE}
+
+
+summary.date <- summary.date[order(as.Date(summary.date$transaction.date, format="%m/%d/%Y")),]
+
+plt <- ggplot(summary.date, aes(as.character(transaction.date), total.date)) + 
+                geom_bar(stat = 'identity') +
+                theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#not plotting via date order, why?
+py <- plotly()
+py$ggplotly(plt, session='knitr')
+
+```
+
+Logistic Regressions
+
+```{r}
+lm <- lm(data$transaction.value ~ data$reporting.org + data$recipient.country, data=data)
+
+summary(lm)
+
+plot(lm)
+```
+
+Purely based on the regressions, there is no real way to forecast aid. The end of the year, countries can expect more aid amounts, but there is no real combination of variables to preidct aid. 
+
+#Clustering Analysis
+
+Cluster Analysis is the task of grouping a set of objects in such a way that objects in the same group (called a cluster) are more similar (in some sense or another) to each other than to those in other groups (clusters). It is a main task of exploratory data mining, and a common technique for statistical data analysis.
+
+K-means clustering is a method of vector quantization, originally from signal processing. K-means clustering aims to partition n observations into k clusters in which each observation belongs to the cluster with the nearest mean, serving as a prototype of the cluster. 
+
+```{r}
+clus <- kmeans(data$transaction.value, centers=4)
+
+plotcluster(data$transaction.value, clus$cluster)
+```
+
+#Conclusions
