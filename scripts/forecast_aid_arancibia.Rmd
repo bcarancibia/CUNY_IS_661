@@ -170,7 +170,7 @@ Lets take a look at the data structure, first order the data.
 
 summary.date <- summary.date[order(as.Date(summary.date$transaction.date, format="%m/%d/%Y")),]
 
-plt <- ggplot(summary.date, aes(as.character(transaction.date), total.date)) + 
+plt <- ggplot(summary.date, aes(transaction.date, total.date)) + 
                 geom_bar(stat = 'identity') +
                 theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -190,6 +190,13 @@ summary(lm)
 plot(lm)
 ```
 
+Look at the regression of transactions values and dates. 
+
+```{r}
+lm.date <- lm(data$transaction.value ~ data$transaction.date, data=data)
+
+summary(lm.date)
+```
 Purely based on the regressions, there is no real way to forecast aid. The end of the year, countries can expect more aid amounts, but there is no real combination of variables to preidct aid. 
 
 #Clustering Analysis
@@ -205,3 +212,4 @@ plotcluster(data$transaction.value, clus$cluster)
 ```
 
 #Conclusions
+
