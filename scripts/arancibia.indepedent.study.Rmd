@@ -54,7 +54,7 @@ set_credentials_file("bcarancibia", "1960rm8f1b")
 The data was downloaded via the [IATI API](datastore.iatistandard.org/api/1/access/transaction.csv?recipient-country=BF%7CBI%7CTD%7CCD%7CCI%7CET%7CGM%7CGW%7CHT%7CHN%7CKG%7CLA%7CMG%7CMD%7CNP%7CSS%7CTL%7CUG&stream=True). The resulting csv was imported into memory to quickly view.
 
 ```{r}
-transactions <- read.csv("transaction.csv", header=TRUE)
+transactions <- read.csv("transactions.csv", header=TRUE)
 nrow(transactions)
 ```
 
@@ -80,9 +80,11 @@ The next step is to filter out only the necessary fields. Currently, there are 7
 * Start Actual
 * End Actual
 * Recipient Country
+* Recipient Country Code
 * Sector
+
 ```{r}
-data <- data[c("transaction.date","transaction.value", "iati.identifier", "reporting.org", "title", "start.planned", "end.planned", "start.actual", "end.actual", "recipient.country", "sector")]
+data <- data[c("transaction.date","transaction.value", "iati.identifier", "reporting.org", "title", "start.planned", "end.planned", "start.actual", "end.actual", "recipient.country","recipient.country.code", "sector")]
 ```
 
 The next step is to remove data that has multiple countries in the transactions, see example below.
@@ -99,7 +101,7 @@ data$recipient.country<- as.character(data$recipient.country)
 data$recipient.country[data$recipient.country == "Lao People'S Democratic Republic"] <- "Laos"
 
 
-data <- subset(data, recipient.country=="Chad"|recipient.country=="Ethiopia"|recipient.country=="Nepal"|recipient.country=="Honduras"|recipient.country=="Senegal"|recipient.country=="Haiti"|recipient.country=="Burkina Faso"| recipient.country=="Burkina Faso"|recipient.country=="Tanzania, United Republic Of"|recipient.country=="Laos"|recipient.country=="Malawi"|recipient.country=="Moldova, Republic of"| recipient.country=="Madagascar"|recipient.country=="Uganda"|recipient.country=="Timor-Leste"|recipient.country=="Congo, The Democratic Republic Of The"|recipient.country=="Kyrgyzstan"|recipient.country=="")
+data <- subset(data, recipient.country=="Chad"|recipient.country=="Ethiopia"|recipient.country=="Nepal"|recipient.country=="Honduras"|recipient.country=="Senegal"|recipient.country=="Haiti"|recipient.country=="Burkina Faso"| recipient.country=="Burkina Faso"|recipient.country=="Tanzania, United Republic Of"|recipient.country=="Laos"|recipient.country=="Malawi"|recipient.country=="Moldova, Republic of"| recipient.country=="Madagascar"|recipient.country=="Uganda"|recipient.country=="Timor-Leste"|recipient.country=="Congo, The Democratic Republic Of The"|recipient.country=="Kyrgyzstan"|recipient.country.code=="CI")
 
 data <- subset(data, transaction.value!="NA")
 data <- subset(data, transaction.date!="")
@@ -109,8 +111,9 @@ data <- subset(data, transaction.date!="")
 Write data to csv and import it to sqlite.
 
 ```{r}
-write.csv(data, file = "transactions.csv", row.names=TRUE, na="")
+write.csv(data, file = "transaction.clean.csv", row.names=TRUE, na="")
 ```
+
 
 
 
