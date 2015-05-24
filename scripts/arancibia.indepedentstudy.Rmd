@@ -1,0 +1,734 @@
+---
+title: "Forecasting Foreign Aid Amounts"
+output: html_document
+---
+
+This is a walk through report explaining the process of using forecast methodologies and apply those methodologies to financial foreign aid. This walk through is broken up into different sections:
+
+* Introduction
+
+* The Data Workflow
+    + Data Import
+    + Exploratory Data Analysis
+
+* Forecast
+    + Methodologies
+    + Implementation
+
+* Conclusions
+
+#Introduction
+
+Developing countries face challenges in accessing up-to-date information about aid, development, and humanitarian flows. This information is needed to plan and manage resources effectively. There is a large movement which allows different stakeholders to publish data on development cooperation activities. The International Aid Transparency Initiative [IATI](http://www.aidtransparency.net/) manages and provides the standard that donors and recipient countries, civil society organizations, and others use to publish and consume data on development cooperation activities.
+
+Assumptions:
+
+* All values are in USD
+
+#Data Workflow
+
+The first step of any analysis is to import the necessary packages. Packages used in this analysis are below.
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(ggplot2) #static visualization
+library(dplyr) #data manipulation and connect to database
+library(knitr)
+library("devtools") #needed to install plotly if you don't have it already
+
+library(plotly) #interactive visualization
+```
+
+```
+#needed for plotly API, replace it with yours, it's free if you sign up for an account
+py <- plotly(username="XXXX", key="XXXX")
+set_credentials_file("XXXXX", "XXXXX") 
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+#needed for plotly API, replace it with yours, it's free if you sign up for an account
+py <- plotly(username="bcarancibia", key="1960rm8f1b")
+set_credentials_file("bcarancibia", "1960rm8f1b") 
+
+setwd("/users/bcarancibia/CUNY_IS_661/")
+```
+
+##Importing the CSV
+
+The data was downloaded via the [IATI API](datastore.iatistandard.org/api/1/access/transaction.csv?recipient-country=BF%7CBI%7CTD%7CCD%7CCI%7CET%7CGM%7CGW%7CHT%7CHN%7CKG%7CLA%7CMG%7CMD%7CNP%7CSS%7CTL%7CUG&stream=True). The resulting csv was imported into memory to quickly view.
+
+```{r, echo=FALSE}
+transactions <- read.csv("/users/bcarancibia/transaction.csv", header=TRUE)
+nrow(transactions)
+```
+
+```{r}
+transactions <- read.csv("transaction.csv", header=TRUE)
+nrow(transactions)
+```
+The number of rows is quite large so the first step is to cut it down to only include transactions that are disbursments and commitments. In the transaction.type, fields with C, D, 2, or 3 are commitments and disbursements. First step is to subset the data to see how many rows of data are in the file.
+
+```{r}
+data <- subset(transactions, transaction.type =="C" | transaction.type =="D" | transaction.type ==2 | transaction.type == 3)
+nrow(data)
+
+nrow(transactions) - nrow(data)
+```
+
+The next step is to filter out only the necessary fields. Currently, there are 74, the key fields necessary are:
+
+* transaction date
+* default currency
+* transaction value
+* IATI identifier
+* Reporting Org
+* Title
+* Start Planned
+* End Planned
+* Start Actual
+* End Actual
+* Recipient Country
+* Recipient Country Code
+* Sector
+
+```{r}
+data <- data[c("transaction.date","transaction.value", "iati.identifier", "reporting.org", "title", "start.planned", "end.planned", "start.actual", "end.actual", "recipient.country","recipient.country.code", "sector")]
+```
+
+The next step is to remove data that has multiple countries in the transactions, see example below.
+
+```{r}
+example.bad <- subset(data, recipient.country =="Pakistan;India;Nepal")
+knitr::kable(head(example.bad))
+```
+
+I could split the transaction into three separate transactions and divide it equally amongst the three recipients, but this would be disengenious to the data and a data quality issue. To limit the scope of this study, the scope is limited to only transactions that are directly to a singular country.
+
+```{r}
+data$recipient.country<- as.character(data$recipient.country)
+data$recipient.country[data$recipient.country == "Lao People'S Democratic Republic"] <- "Laos"
+
+
+data <- subset(data, recipient.country=="Chad"|recipient.country=="Ethiopia"|recipient.country=="Nepal"|recipient.country=="Honduras"|recipient.country=="Senegal"|recipient.country=="Haiti"|recipient.country=="Burkina Faso"| recipient.country=="Burkina Faso"|recipient.country=="Tanzania, United Republic Of"|recipient.country=="Laos"|recipient.country=="Malawi"|recipient.country=="Moldova, Republic of"| recipient.country=="Madagascar"|recipient.country=="Uganda"|recipient.country=="Timor-Leste"|recipient.country=="Congo, The Democratic Republic Of The"|recipient.country=="Kyrgyzstan"|recipient.country.code=="CI")
+
+data <- subset(data, transaction.value!="NA")
+data <- subset(data, transaction.date!="")
+
+```
+
+Write data to csv and import it to sqlite.
+
+```{r}
+write.csv(data, file = "transaction.clean.csv", row.names=TRUE, na="")
+```
+
+After doing this you can then create an SQLite database and import the dataset you just created. Below is the code typed into the command line. There are a lot of interfaces out there that allows you to manage databases without needing to know the command line.
+
+```
+$ sqlite3 data.db # Create your database
+$.databases       # Show databases to make sure it works
+$.mode csv        
+$.import <filename> <tablename>
+# Where filename is the name of the csv & tablename is the name of the new database table
+$.quit 
+```
+
+##Connect to the Database
+
+Connect to the database and the appropriate table
+```{r, echo=FALSE}
+db <- src_sqlite('/users/bcarancibia/CUNY_IS_661/transactions.db', create = FALSE)
+db
+
+data.clean <- tbl(db, 'transclean')
+
+```
+
+```
+db <- src_sqlite('transactions.db', create = FALSE)
+db
+
+data.clean <- tbl(db, 'transclean')
+```
+
+###Preview the data
+
+```{r kable}
+head_ <- function(x, n = 5) head(x, n)
+kable(head_(data.clean))
+```
+
+##Exploratory Data Analysis
+
+```{r, plotly=TRUE}
+
+#actions count per country
+
+#query
+q <- data.clean %>% select(recipient.country) %>%
+  group_by(recipient.country) %>%
+  summarise(transactions = sum(transaction.value)) %>%
+  arrange(-transactions)
+
+#pass query to database
+q <- collect(q)
+
+knitr::kable(q)
+
+#plot
+plt <- ggplot(q, aes(recipient.country, transactions)) + 
+                geom_bar(stat = 'identity') +
+                theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#pass to plotly
+py <- plotly()
+py$ggplotly(plt, session='knitr')
+
+```
+
+
+#Forecast
+
+###Extracting Dates
+The data provided does not fit the standard date format for SQLite, it cannot consume MM/DD/YYYY and has to remove the slashes. We have a few options to remedy this:
+
+* Create a new column in the SQL database, and reinsert the data with the formatted date statements
+* Create a new table and INSERT the formatted date into the original column name
+* Generate a SELECT wrapper using dplyr that formats the dates.
+
+To illustrate using R, I will use dplyr. This is not necessarily the most optimal approach. Here I select substrings of the date fields, with SUBSTR and concatenate them with ||.
+
+```{r}
+data.clean <- tbl(db, sql('SELECT "transaction.value" AS transvalue,
+                    SUBSTR("transaction.date", 7, 4) || "-" ||
+                    SUBSTR("transaction.date", 4, 2) || "-" ||
+                    SUBSTR("transaction.date", 1, 2) as "transactiondate", "iati.identifier" AS id, "reporting.org" AS "reporter", title,
+                    SUBSTR("start.planned", 7, 4) || "-" ||
+                    SUBSTR("start.planned", 4, 2) || "-" ||
+                    SUBSTR("start.planned", 1, 2) as "startplanned",
+                    SUBSTR("end.planned", 7, 4) || "-" ||
+                    SUBSTR("end.planned", 4, 2) || "-" ||
+                    SUBSTR("end.planned", 1, 2) as "endplanned",
+                    SUBSTR("start.actual", 7, 4) || "-" ||
+                    SUBSTR("start.actual", 4, 2) || "-" ||
+                    SUBSTR("start.actual", 1, 2) as "startactual",
+                    SUBSTR("end.actual", 7, 4) || "-" ||
+                    SUBSTR("end.actual", 4, 2) || "-" ||
+                    SUBSTR("end.actual", 1, 2) as "endactual",
+                    "recipient.country" AS recipient, "recipient.country.code" AS countrycode, sector
+                    FROM transclean'))
+
+```
+
+###Pull out the year using strftime
+
+The command strftime allows you to pull out specific time periods. What is being done in the commands below is capturing the year, creating a new column with only the year, and then grouping the projects by year created. A graphic is then produced.
+
+```{r, plotly=TRUE}
+#created year pulled out and new column created
+q <- data.clean %>% mutate(year = strftime('%Y', transactiondate))%>%
+  group_by(year) %>% summarise(transaction.value.year= sum(transvalue))
+
+#run query
+q <- collect(q)
+
+plt <- ggplot(na.omit(q), aes(year, transaction.value.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+py$ggplotly(plt, session='knitr')
+
+```
+
+What the above graphic shows is that the year 2012, there was a large spike of transaction amounts in 2012. To determine what caused the spike in 2012, the year 2011 has to be investiated since aid budgets are on a yearly basis. Some world events in 2011 that could have increased financial aid amounts is the Arab Spring, South Sudan secedes from Sudan, and Nepalese assembly writing the constitution and opening the country. Financial aid amounts could also be high in 2012 if the amounts are from natural disasters. For example, the Haiti earthquan in late 2010 should cause an increase in 2011 and then a much larger increase in 2012. After 2012, there should be a tapering of aid amounts to Haiti. 
+
+```{r}
+q <- data.clean %>% mutate(year = strftime('%Y', transactiondate))%>%
+  group_by(year, recipient) %>% summarise(transaction.value.year= sum(transvalue))
+
+q <- collect(q)
+
+plt <- ggplot(na.omit(q), aes(year, recipient)) +  
+  geom_tile(aes(fill=transaction.value.year), colour = "white") +
+  scale_fill_gradient(low = "white", high = "steelblue")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+![Transaction Amounts Over Time](/users/bcarancibia/CUNY_IS_661/countryamounts.png)
+
+
+The graph above shows just that. There was a huge spike in Haiti in 2012 and then a leveling off. Though the data shows that in 2012 there was just a general increase in aid transactions overall. This could be a result of governments recovering from the 2008 financial crisis and beginning to make more commitments abroad. The three countries with the most consistent amount of funding seems to be Nepal, Tanzania, and Ethiopia. 
+
+
+##Scaled Transaction Values
+
+One the issues with financial aid transactions is that transaction amounts are often reactionary to world events. As a result, there are huge spikes of financial aid transactions after disasters, food shortages, or other world events. These spikes and lows are similar to stocks within the stock market; however, stock market values can be adjusted and forecasted using logarithm functions. Financial aid transactions don't follow the same logarithmic exponential form. Another way to forecast is to find the average of a certain time period and then determine if the amount is going to be above or below the average.
+
+The issue with the average is that with the spikes and lows in financial aid amounts, the average will always be low number. See the below example with Nepal. 
+
+
+```{r,warning=FALSE}
+
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Nepal") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+q <- collect(q)
+
+nepal.ave <- subset(q, q$year>=2009)
+
+nepal.ave$transvalue <- as.numeric(nepal.ave$transvalue)
+
+mean(nepal.ave$transvalue)
+
+plt <- ggplot(na.omit(nepal.ave), aes(year, transvalue)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 5780023)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+
+```
+
+One way to account for this is to scale the values, take the average of the scaled values and plot.
+
+```{r,warning=FALSE}
+nepal.ave$scalevalues <- scale(nepal.ave$transvalue)
+
+mean(nepal.ave$scalevalues)
+
+plt <- ggplot(na.omit(nepal.ave), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 2.664344e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+
+```
+
+Though the scaled values show a decrease in aid over the years relative to the large spike in 2012, the average of the scaled values over time shows an increase. Also, someone forecasting could expect the foreign financial aid transactions to increase due to the recent devasting earthquake. 
+
+The increase of aive overtime is even more apparent when looking at the entire history of foreign financial assistance to Nepal.
+
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Nepal") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+nepal <- collect(q)
+
+nepal$transvalue <- as.numeric(nepal$transvalue)
+
+nepal$scalevalues <- scale(nepal$transvalue)
+
+mean(nepal$scalevalues)
+
+plt <- ggplot(na.omit(nepal), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 2.664344e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+
+```
+
+This is generally what we see, there is an increase in fiancial foreign aid amounts going to Nepal over time, the scaled values are just effected and show negative numbers due to the large spike in 2012. 
+
+The above methodology will be applied to each country and a conclusion will be made as to if aid will increase, decrease, or stay about the same in the countries selected which are:
+
+* Burkina Faso
+* Chad
+* Congo
+* Cote D'Ivoire
+* Ethiopia
+* Haiti
+* Honduras
+* Kyrgyzstan
+* Laos
+* Madagascar
+* Malawi
+* Nepal
+* Senegal
+* Tanzania
+* Timor-Leste
+* Uganda
+
+
+###Burkina Faso
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Burkina Faso") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+burkina <- collect(q)
+
+burkina$transvalue <- as.numeric(burkina$transvalue)
+
+burkina$scalevalues <- scale(burkina$transvalue)
+
+mean(burkina$scalevalues)
+
+plt <- ggplot(na.omit(burkina), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 2.913786e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+
+```
+
+###Chad
+
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Chad") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+chad<- collect(q)
+
+chad$transvalue <- as.numeric(chad$transvalue)
+
+chad$scalevalues <- scale(chad$transvalue)
+
+mean(chad$scalevalues)
+
+plt <- ggplot(na.omit(chad), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 1.6914e-17)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+
+```
+
+###Congo
+
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Congo The Democratic Republic Of The") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+congo<- collect(q)
+
+congo$transvalue <- as.numeric(congo$transvalue)
+
+congo$scalevalues <- scale(congo$transvalue)
+
+mean(congo$scalevalues)
+
+plt <- ggplot(na.omit(congo), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = -4.773688e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Cote D'Ivoire
+```{r,warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Cote D'Ivoire") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+civ<- collect(q)
+
+civ$transvalue <- as.numeric(civ$transvalue)
+
+civ$scalevalues <- scale(civ$transvalue)
+
+mean(civ$scalevalues)
+
+plt <- ggplot(na.omit(civ), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 1.103739e-17)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+
+###Ethiopia
+```{r,warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Ethiopia") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+ethiopia<- collect(q)
+
+ethiopia$transvalue <- as.numeric(ethiopia$transvalue)
+
+ethiopia$scalevalues <- scale(ethiopia$transvalue)
+
+mean(ethiopia$scalevalues)
+
+plt <- ggplot(na.omit(ethiopia), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 3.986141e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Haiti
+```{r,warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Haiti") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+haiti<- collect(q)
+
+haiti$transvalue <- as.numeric(haiti$transvalue)
+
+haiti$scalevalues <- scale(haiti$transvalue)
+
+mean(haiti$scalevalues)
+
+plt <- ggplot(na.omit(haiti), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = -2.101609e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Honduras
+
+```{r,warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Honduras") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+honduras<- collect(q)
+
+honduras$transvalue <- as.numeric(honduras$transvalue)
+
+honduras$scalevalues <- scale(honduras$transvalue)
+
+mean(honduras$scalevalues)
+
+plt <- ggplot(na.omit(honduras), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 6.458883e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Kyrgyzstan
+
+```{r,warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Kyrgyzstan") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+kyrg<- collect(q)
+
+kyrg$transvalue <- as.numeric(kyrg$transvalue)
+
+kyrg$scalevalues <- scale(kyrg$transvalue)
+
+mean(kyrg$scalevalues)
+
+plt <- ggplot(na.omit(kyrg), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 4.177951e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Laos
+
+```{r,warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Laos") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+laos<- collect(q)
+
+laos$transvalue <- as.numeric(laos$transvalue)
+
+laos$scalevalues <- scale(laos$transvalue)
+
+mean(laos$scalevalues)
+
+plt <- ggplot(na.omit(laos), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept =  1.091705e-21)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Madagascar
+
+```{r,warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Madagascar") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+madagascar<- collect(q)
+
+madagascar$transvalue <- as.numeric(madagascar$transvalue)
+
+madagascar$scalevalues <- scale(madagascar$transvalue)
+
+mean(madagascar$scalevalues)
+
+plt <- ggplot(na.omit(laos), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept =  -1.081833e-17)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Malawi
+
+```{r,warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Malawi") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+malawi<- collect(q)
+
+malawi$transvalue <- as.numeric(malawi$transvalue)
+
+malawi$scalevalues <- scale(malawi$transvalue)
+
+mean(malawi$scalevalues)
+
+plt <- ggplot(na.omit(malawi), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept =  -5.400044e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Nepal
+
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Nepal") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+nepal <- collect(q)
+
+nepal$transvalue <- as.numeric(nepal$transvalue)
+
+nepal$scalevalues <- scale(nepal$transvalue)
+
+mean(nepal$scalevalues)
+
+plt <- ggplot(na.omit(nepal), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 2.664344e-18)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Senegal
+
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Senegal") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+senegal <- collect(q)
+
+senegal$transvalue <- as.numeric(senegal$transvalue)
+
+senegal$scalevalues <- scale(senegal$transvalue)
+
+mean(senegal$scalevalues)
+
+plt <- ggplot(na.omit(senegal), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = -5.378174e-20)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Tanzania
+
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Tanzania United Republic Of") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+tanzania <- collect(q)
+
+tanzania$transvalue <- as.numeric(tanzania$transvalue)
+
+tanzania$scalevalues <- scale(tanzania$transvalue)
+
+mean(tanzania$scalevalues)
+
+plt <- ggplot(na.omit(tanzania), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = 8.896276e-19)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Timor-Leste
+
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Timor-Leste") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+timor <- collect(q)
+
+timor$transvalue <- as.numeric(timor$transvalue)
+
+timor$scalevalues <- scale(timor$transvalue)
+
+mean(timor$scalevalues)
+
+plt <- ggplot(na.omit(timor), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = -9.939034e-19)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+###Uganda
+
+```{r, warning=FALSE}
+q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
+          filter(recipient == "Uganda") %>%
+          mutate(year = strftime('%Y', transactiondate))
+
+uganda <- collect(q)
+
+uganda$transvalue <- as.numeric(uganda$transvalue)
+
+uganda$scalevalues <- scale(uganda$transvalue)
+
+mean(uganda$scalevalues)
+
+plt <- ggplot(na.omit(uganda), aes(year, scalevalues)) + 
+  geom_bar(stat='identity', fill = "steelblue") + 
+  geom_abline(intercept = -1.66862e-19)+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+plt
+```
+
+
+
+
+#Conclusion
+
+
+
+
+
