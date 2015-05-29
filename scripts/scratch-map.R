@@ -1,3 +1,39 @@
+library(ggplot2) #static visualization
+library(dplyr) #data manipulation and connect to database
+library(knitr)
+library("devtools") #needed to install plotly if you don't have it already
+
+library(plotly) #interactive visualization
+
+py <- plotly(username="bcarancibia", key="1960rm8f1b")
+set_credentials_file("bcarancibia", "1960rm8f1b") 
+
+setwd("/users/bcarancibia/CUNY_IS_661/")
+
+db <- src_sqlite('/users/bcarancibia/CUNY_IS_661/transactions.db', create = FALSE)
+db
+
+data.clean <- tbl(db, 'transclean')
+
+data.clean <- tbl(db, sql('SELECT "transaction.value" AS transvalue,
+                    SUBSTR("transaction.date", 7, 4) || "-" ||
+                    SUBSTR("transaction.date", 4, 2) || "-" ||
+                    SUBSTR("transaction.date", 1, 2) as "transactiondate", "iati.identifier" AS id, "reporting.org" AS "reporter", title,
+                    SUBSTR("start.planned", 7, 4) || "-" ||
+                    SUBSTR("start.planned", 4, 2) || "-" ||
+                    SUBSTR("start.planned", 1, 2) as "startplanned",
+                    SUBSTR("end.planned", 7, 4) || "-" ||
+                    SUBSTR("end.planned", 4, 2) || "-" ||
+                    SUBSTR("end.planned", 1, 2) as "endplanned",
+                    SUBSTR("start.actual", 7, 4) || "-" ||
+                    SUBSTR("start.actual", 4, 2) || "-" ||
+                    SUBSTR("start.actual", 1, 2) as "startactual",
+                    SUBSTR("end.actual", 7, 4) || "-" ||
+                    SUBSTR("end.actual", 4, 2) || "-" ||
+                    SUBSTR("end.actual", 1, 2) as "endactual",
+                    "recipient.country" AS recipient, "recipient.country.code" AS countrycode, sector
+                    FROM transclean'))
+
 #burkina 
 
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
@@ -12,6 +48,13 @@ by.year <- group_by(burkina, year)
 summary.year <- summarise(by.year, count.year = n(), 
                               total.year = sum(transvalue))
 
+plt <- ggplot(na.omit(summary.year), aes(year, total.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+py$ggplotly(plt)
+
 #chad
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
   filter(recipient == "Chad") %>%
@@ -25,6 +68,13 @@ by.year <- group_by(chad, year)
 summary.year <- summarise(by.year, count.year = n(), 
                           total.year = sum(transvalue))
 
+plt <- ggplot(na.omit(summary.year), aes(year, total.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+py$ggplotly(plt)
+
 #congo
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
   filter(recipient == "Congo The Democratic Republic Of The") %>%
@@ -37,6 +87,13 @@ congo$transvalue <- as.numeric(congo$transvalue)
 by.year <- group_by(congo, year)
 summary.year <- summarise(by.year, count.year = n(), 
                           total.year = sum(transvalue))
+
+plt <- ggplot(na.omit(summary.year), aes(year, total.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+py$ggplotly(plt)
 
 
 #civ
@@ -52,6 +109,13 @@ by.year <- group_by(civ, year)
 summary.year <- summarise(by.year, count.year = n(), 
                           total.year = sum(transvalue))
 
+plt <- ggplot(na.omit(summary.year), aes(year, total.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+py$ggplotly(plt)
+
 #ethiopia
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
   filter(recipient == "Ethiopia") %>%
@@ -64,6 +128,13 @@ ethiopia$transvalue <- as.numeric(ethiopia$transvalue)
 by.year <- group_by(ethiopia, year)
 summary.year <- summarise(by.year, count.year = n(), 
                           total.year = sum(transvalue))
+
+plt <- ggplot(na.omit(summary.year), aes(year, total.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+py$ggplotly(plt)
 
 
 #haiti
@@ -79,6 +150,13 @@ by.year <- group_by(haiti, year)
 summary.year <- summarise(by.year, count.year = n(), 
                           total.year = sum(transvalue))
 
+plt <- ggplot(na.omit(summary.year), aes(year, total.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+py$ggplotly(plt)
+
 #honduras
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
   filter(recipient == "Honduras") %>%
@@ -92,6 +170,15 @@ by.year <- group_by(honduras, year)
 summary.year <- summarise(by.year, count.year = n(), 
                           total.year = sum(transvalue))
 
+plt <- ggplot(na.omit(summary.year), aes(year, total.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+
+py$ggplotly(plt)
+
+
 #kyrg
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
   filter(recipient == "Kyrgyzstan") %>%
@@ -104,6 +191,15 @@ kyrg$transvalue <- as.numeric(kyrg$transvalue)
 by.year <- group_by(kyrg, year)
 summary.year <- summarise(by.year, count.year = n(), 
                           total.year = sum(transvalue))
+
+plt <- ggplot(na.omit(summary.year), aes(year, total.year)) + 
+  geom_bar(stat='identity') + 
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+py <- plotly()
+
+py$ggplotly(plt)
+
 
 #laos
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 

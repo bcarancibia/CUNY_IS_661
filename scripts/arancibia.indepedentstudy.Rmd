@@ -25,6 +25,8 @@ Assumptions:
 
 * All values are in USD
 
+* Amounts reported by donors are accurate
+
 #Data Workflow
 
 The first step of any analysis is to import the necessary packages. Packages used in this analysis are below.
@@ -61,7 +63,7 @@ transactions <- read.csv("/users/bcarancibia/transaction.csv", header=TRUE)
 nrow(transactions)
 ```
 
-```{r}
+```{r,eval=FALSE}
 transactions <- read.csv("transaction.csv", header=TRUE)
 nrow(transactions)
 ```
@@ -334,7 +336,7 @@ plt
 
 ```
 
-This is generally what we see, there is an increase in fiancial foreign aid amounts going to Nepal over time, the scaled values are just effected and show negative numbers due to the large spike in 2012. 
+This is generally what we see, there is an increase in fiancial foreign aid amounts going to Nepal over time, the scaled value show negative numbers due to the large spike in 2012. If the the scaled values continued to become more negative over time, this would indicate that aid is decreasing. 
 
 The above methodology will be applied to each country and a conclusion will be made as to if aid will increase, decrease, or stay about the same in the countries selected which are:
 
@@ -379,6 +381,8 @@ plt
 
 ```
 
+There is a large spike in 2012 due to the overall large spike across all countries studied, There was a decrease in 2013 and 2014. Expect 2015 values and 2016 values to be larger than 2014.
+
 ###Chad
 
 ```{r, warning=FALSE}
@@ -403,6 +407,7 @@ plt
 
 ```
 
+Large spike in 2012, with decreases in 2013, 2014, but 2015 is relatively similar to 2014. Chad can expect 2015 to be similar to 2014, but with an increase.
 ###Congo
 
 ```{r, warning=FALSE}
@@ -426,6 +431,9 @@ plt <- ggplot(na.omit(congo), aes(year, scalevalues)) +
 plt
 ```
 
+Large spike in 2002 and 2012, with substantial decreases after the spikes. It appears there is a three year cycle with the Democratic Republic of the Congo. 2015 aid amounts will be larger than 2014, and expect 2016 amounts to increase.
+
+
 ###Cote D'Ivoire
 ```{r,warning=FALSE}
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
@@ -448,6 +456,7 @@ plt <- ggplot(na.omit(civ), aes(year, scalevalues)) +
 plt
 ```
 
+Incredibly large spike in 2012 with decreases over the next three years. This large spike is due to the Civil War experienced in the country. Expect the aid amount to increase relative to 2015 and 2016 with a more stable nation.
 
 ###Ethiopia
 ```{r,warning=FALSE}
@@ -471,6 +480,9 @@ plt <- ggplot(na.omit(ethiopia), aes(year, scalevalues)) +
 plt
 ```
 
+There are large spikes of aid in 2007, 2012, and 2013. These large spikes seem to have three years of small amounts of aid flowing into the country. The most recent large spike was in 2013 so can expect 2015 to have a decreased amount of funding, with an increase in 2016. 
+
+
 ###Haiti
 ```{r,warning=FALSE}
 q <- data.clean %>% select(transvalue, recipient, transactiondate) %>% 
@@ -492,6 +504,8 @@ plt <- ggplot(na.omit(haiti), aes(year, scalevalues)) +
 
 plt
 ```
+
+There was a large spike in 2012, with relative decreases. Haiti can expect the aid amount to stay stable or increase slightly. 
 
 ###Honduras
 
@@ -516,6 +530,8 @@ plt <- ggplot(na.omit(honduras), aes(year, scalevalues)) +
 plt
 ```
 
+Honduras had large spike in 2012, with relatively little aid to the country surrounding the spike. Aid amounts have increased since 2013 and the trend will continue due to Honduras's violence/drug situation and proximity to the United States. 
+
 ###Kyrgyzstan
 
 ```{r,warning=FALSE}
@@ -538,6 +554,8 @@ plt <- ggplot(na.omit(kyrg), aes(year, scalevalues)) +
 
 plt
 ```
+
+Kyrgyzstan had three relative spikes in 2007, 2011, 2012. Besides those spikes aid amounts are relatively similar and not flucutating. Expect the same to occur in 2015 and beyond. 
 
 ###Laos
 
@@ -562,6 +580,8 @@ plt <- ggplot(na.omit(laos), aes(year, scalevalues)) +
 plt
 ```
 
+Large spike in 2012, with relative smaller than normal amounts of financial foreign aid in 2013 and 2014. Amount seems to be increasing in 2015 and can expect the amount in 2015 and 2016 to be larger than in 2016 and return back to pre 2012 numbers.
+
 ###Madagascar
 
 ```{r,warning=FALSE}
@@ -577,13 +597,15 @@ madagascar$scalevalues <- scale(madagascar$transvalue)
 
 mean(madagascar$scalevalues)
 
-plt <- ggplot(na.omit(laos), aes(year, scalevalues)) + 
+plt <- ggplot(na.omit(madagascar), aes(year, scalevalues)) + 
   geom_bar(stat='identity', fill = "steelblue") + 
   geom_abline(intercept =  -1.081833e-17)+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 plt
 ```
+
+Madagascar has lots of fluctuation with spikes in 2012 and 2014 and a large low in 2013. The last time this pattern occured was 2001-2003. Madagascar is harder to predict, but 2015 and 2016 amount should decreased relative to 2014.
 
 ###Malawi
 
@@ -608,6 +630,8 @@ plt <- ggplot(na.omit(malawi), aes(year, scalevalues)) +
 plt
 ```
 
+Large spike in 2012 with decrease in aid amounts in 2013 and a large decrease in 2014. 2015 should return to relative average amount.
+
 ###Nepal
 
 ```{r, warning=FALSE}
@@ -630,6 +654,8 @@ plt <- ggplot(na.omit(nepal), aes(year, scalevalues)) +
 
 plt
 ```
+
+Nepal had a large amount of aid come in 2012 with a decrease in 2013 and 2014. 2015 and in the near future there will be large spikes in aid because of the recent earthquake. Expect there to be large spikes in 2015 and 2016 with a decrease in 2017.
 
 ###Senegal
 
@@ -654,6 +680,8 @@ plt <- ggplot(na.omit(senegal), aes(year, scalevalues)) +
 plt
 ```
 
+Large spike in 2012 with major decreases in 2013 and 2014. Expect 2015 to return back to the average small amount. 
+
 ###Tanzania
 
 ```{r, warning=FALSE}
@@ -676,6 +704,8 @@ plt <- ggplot(na.omit(tanzania), aes(year, scalevalues)) +
 
 plt
 ```
+
+Large spike in 2014 with major decreases in 2014 and exect 2015 to return back to 2011 amounts. 
 
 ###Timor-Leste
 
@@ -700,6 +730,8 @@ plt <- ggplot(na.omit(timor), aes(year, scalevalues)) +
 plt
 ```
 
+Spike in 2011 and 2012 with decrease in 2013, but an increase in 2014. 2015 should increase, but the amount of aid entering Timor-Leste is relatively small compared to other nations. 
+
 ###Uganda
 
 ```{r, warning=FALSE}
@@ -723,11 +755,11 @@ plt <- ggplot(na.omit(uganda), aes(year, scalevalues)) +
 plt
 ```
 
-
-
+Uganda there was a large decrease in aid 2013 and 2014. This is due to donors pulling out of Uganda because of the recent government policies targeting Homosexual citizens and foreign workers in the nation. Expect to see an increase compared to 2014, but still relative small number. 
 
 #Conclusion
 
+It is hard to predict financial foreign amounts. Financial foreign aid amounts tend to reactive to events in the country i.e. recent earthquake in Nepal or 2010 earthquake in Haiti. The only real way to look at financial foreign aid is that the amounts are increasing and will continue to increase, but it is almost impossible to predict when spikes will occur. 
 
 
 
